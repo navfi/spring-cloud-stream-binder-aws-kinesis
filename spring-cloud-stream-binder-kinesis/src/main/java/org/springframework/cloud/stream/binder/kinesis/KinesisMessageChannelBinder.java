@@ -23,10 +23,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.kinesis.AmazonKinesisAsync;
+import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
 import com.amazonaws.services.kinesis.model.Shard;
 import com.amazonaws.services.kinesis.model.ShardIteratorType;
+import com.amazonaws.services.kinesis.producer.KinesisProducer;
+import com.amazonaws.services.kinesis.producer.KinesisProducerConfiguration;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.stream.binder.AbstractMessageChannelBinder;
 import org.springframework.cloud.stream.binder.BinderHeaders;
 import org.springframework.cloud.stream.binder.BinderSpecificPropertiesProvider;
@@ -42,10 +47,13 @@ import org.springframework.cloud.stream.binder.kinesis.provisioning.KinesisStrea
 import org.springframework.cloud.stream.provisioning.ConsumerDestination;
 import org.springframework.cloud.stream.provisioning.ProducerDestination;
 import org.springframework.expression.EvaluationContext;
+import org.springframework.integration.aws.inbound.kinesis.KclMessageDrivenChannelAdapter;
 import org.springframework.integration.aws.inbound.kinesis.KinesisMessageDrivenChannelAdapter;
 import org.springframework.integration.aws.inbound.kinesis.KinesisMessageHeaderErrorMessageStrategy;
 import org.springframework.integration.aws.inbound.kinesis.KinesisShardOffset;
+import org.springframework.integration.aws.outbound.AbstractAwsMessageHandler;
 import org.springframework.integration.aws.outbound.KinesisMessageHandler;
+import org.springframework.integration.aws.outbound.KplMessageHandler;
 import org.springframework.integration.channel.ChannelInterceptorAware;
 import org.springframework.integration.core.MessageProducer;
 import org.springframework.integration.expression.ExpressionUtils;
@@ -79,9 +87,14 @@ public class KinesisMessageChannelBinder extends
 
 	private static final ErrorMessageStrategy ERROR_MESSAGE_STRATEGY = new KinesisMessageHeaderErrorMessageStrategy();
 
+	@Value("${cloud.aws.region.static}")
+	private String defaultRegion;
+
 	private final KinesisBinderConfigurationProperties configurationProperties;
 
 	private KinesisExtendedBindingProperties extendedBindingProperties = new KinesisExtendedBindingProperties();
+
+	private final AWSCredentialsProvider awsCredentialsProvider;
 
 	private final AmazonKinesisAsync amazonKinesis;
 
@@ -93,13 +106,16 @@ public class KinesisMessageChannelBinder extends
 
 
 	public KinesisMessageChannelBinder(AmazonKinesisAsync amazonKinesis,
+			AWSCredentialsProvider awsCredentialsProvider,
 			KinesisBinderConfigurationProperties configurationProperties,
 			KinesisStreamProvisioner provisioningProvider) {
 
 		super(headersToMap(configurationProperties), provisioningProvider);
+		Assert.notNull(awsCredentialsProvider, "'awsCredentialsProvider' must not be null");
 		Assert.notNull(amazonKinesis, "'amazonKinesis' must not be null");
 		this.configurationProperties = configurationProperties;
 		this.amazonKinesis = amazonKinesis;
+		this.awsCredentialsProvider = awsCredentialsProvider;
 	}
 
 	public void setExtendedBindingProperties(
@@ -146,21 +162,47 @@ public class KinesisMessageChannelBinder extends
 			ExtendedProducerProperties<KinesisProducerProperties> producerProperties,
 			MessageChannel errorChannel) {
 
-		KinesisMessageHandler kinesisMessageHandler = new KinesisMessageHandler(
-				this.amazonKinesis);
-		kinesisMessageHandler.setSync(producerProperties.getExtension().isSync());
-		kinesisMessageHandler
-				.setSendTimeout(producerProperties.getExtension().getSendTimeout());
-		kinesisMessageHandler.setStream(destination.getName());
-		kinesisMessageHandler.setPartitionKeyExpression(
-				new FunctionExpression<Message<?>>((m) ->
-						m.getHeaders().containsKey(BinderHeaders.PARTITION_HEADER)
-								? m.getHeaders().get(BinderHeaders.PARTITION_HEADER)
-								: m.getPayload().hashCode()));
-		kinesisMessageHandler.setFailureChannel(errorChannel);
-		kinesisMessageHandler.setBeanFactory(getBeanFactory());
+		FunctionExpression<Message<?>> partitionKeyExpression = new FunctionExpression<Message<?>>((m) ->
+			m.getHeaders().containsKey(BinderHeaders.PARTITION_HEADER)
+				? m.getHeaders().get(BinderHeaders.PARTITION_HEADER)
+				: m.getPayload().hashCode());
+		final AbstractAwsMessageHandler<?> messageHandler;
+		if (this.configurationProperties.isKplKclEnabled()) {
+			messageHandler = createKplMessageHandler(destination, partitionKeyExpression);
+		}
+		else {
+			messageHandler = createKinesisMessageHandler(destination, partitionKeyExpression);
+		}
+		messageHandler.setSync(producerProperties.getExtension().isSync());
+		messageHandler.setSendTimeout(producerProperties.getExtension().getSendTimeout());
+		messageHandler.setFailureChannel(errorChannel);
+		messageHandler.setBeanFactory(getBeanFactory());
+		return messageHandler;
+	}
 
-		return kinesisMessageHandler;
+	private AbstractAwsMessageHandler<?> createKinesisMessageHandler(ProducerDestination destination,
+			FunctionExpression<Message<?>> partitionKeyExpression) {
+		final KinesisMessageHandler messageHandler;
+		messageHandler = new KinesisMessageHandler(this.amazonKinesis);
+		messageHandler.setStream(destination.getName());
+		messageHandler.setPartitionKeyExpression(partitionKeyExpression);
+		return messageHandler;
+	}
+
+	private AbstractAwsMessageHandler<?> createKplMessageHandler(ProducerDestination destination,
+			FunctionExpression<Message<?>> partitionKeyExpression) {
+		final KplMessageHandler messageHandler;
+		KinesisProducerConfiguration configuration = new KinesisProducerConfiguration();
+		if (this.configurationProperties.getRegion() != null) {
+			configuration.setRegion(this.configurationProperties.getRegion());
+		}
+		else {
+			configuration.setRegion(this.defaultRegion);
+		}
+		messageHandler = new KplMessageHandler(new KinesisProducer(configuration));
+		messageHandler.setStream(destination.getName());
+		messageHandler.setPartitionKeyExpression(partitionKeyExpression);
+		return messageHandler;
 	}
 
 	@Override
@@ -190,6 +232,18 @@ public class KinesisMessageChannelBinder extends
 			String group,
 			ExtendedConsumerProperties<KinesisConsumerProperties> properties) {
 
+		MessageProducer adapter;
+		if (this.configurationProperties.isKplKclEnabled()) {
+			adapter = createKclConsumerEndpoint(destination, group, properties);
+		}
+		else {
+			adapter = createKinesisConsumerEndpoint(destination, group, properties);
+		}
+		return adapter;
+	}
+
+	private MessageProducer createKinesisConsumerEndpoint(ConsumerDestination destination, String group,
+			ExtendedConsumerProperties<KinesisConsumerProperties> properties) {
 		KinesisConsumerProperties kinesisConsumerProperties = properties.getExtension();
 
 		Set<KinesisShardOffset> shardOffsets = null;
@@ -280,6 +334,40 @@ public class KinesisMessageChannelBinder extends
 
 		ErrorInfrastructure errorInfrastructure = registerErrorInfrastructure(destination,
 				consumerGroup, properties);
+		adapter.setErrorMessageStrategy(ERROR_MESSAGE_STRATEGY);
+		adapter.setErrorChannel(errorInfrastructure.getErrorChannel());
+
+		return adapter;
+	}
+
+	private MessageProducer createKclConsumerEndpoint(ConsumerDestination destination, String group,
+			ExtendedConsumerProperties<KinesisConsumerProperties> properties) {
+		KinesisConsumerProperties kinesisConsumerProperties = properties.getExtension();
+
+		String shardIteratorType = kinesisConsumerProperties.getShardIteratorType();
+
+		KclMessageDrivenChannelAdapter adapter = new KclMessageDrivenChannelAdapter(this.awsCredentialsProvider,
+				destination.getName());
+
+		boolean anonymous = !StringUtils.hasText(group);
+		String consumerGroup = anonymous ? "anonymous." + UUID.randomUUID().toString() : group;
+		adapter.setConsumerGroup(consumerGroup);
+
+		if (this.configurationProperties.getRegion() != null) {
+			adapter.setRegion(this.configurationProperties.getRegion());
+		}
+		else {
+			adapter.setRegion(this.defaultRegion);
+		}
+
+		if (StringUtils.hasText(shardIteratorType)) {
+			adapter.setStreamInitialSequence(InitialPositionInStream.valueOf(shardIteratorType));
+		}
+
+		adapter.setIdleBetweenPolls(kinesisConsumerProperties.getIdleBetweenPolls());
+		adapter.setConsumerBackoff(kinesisConsumerProperties.getConsumerBackoff());
+
+		ErrorInfrastructure errorInfrastructure = registerErrorInfrastructure(destination, consumerGroup, properties);
 		adapter.setErrorMessageStrategy(ERROR_MESSAGE_STRATEGY);
 		adapter.setErrorChannel(errorInfrastructure.getErrorChannel());
 

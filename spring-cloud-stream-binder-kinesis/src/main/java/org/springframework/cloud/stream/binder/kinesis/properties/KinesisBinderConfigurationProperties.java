@@ -31,6 +31,8 @@ import org.springframework.integration.aws.metadata.DynamoDbMetadataStore;
 @ConfigurationProperties(prefix = "spring.cloud.stream.kinesis.binder")
 public class KinesisBinderConfigurationProperties {
 
+	private String region = null;
+
 	private String[] headers = new String[] {};
 
 	private int describeStreamBackoff = 1000;
@@ -41,9 +43,19 @@ public class KinesisBinderConfigurationProperties {
 
 	private int minShardCount = 1;
 
+	private boolean kplKclEnabled;
+
 	private final Checkpoint checkpoint = new Checkpoint();
 
 	private final Locks locks = new Locks();
+
+	public String getRegion() {
+		return this.region;
+	}
+
+	public void setRegion(String region) {
+		this.region = region;
+	}
 
 	public String[] getHeaders() {
 		return this.headers;
@@ -91,6 +103,14 @@ public class KinesisBinderConfigurationProperties {
 
 	public Locks getLocks() {
 		return this.locks;
+	}
+
+	public boolean isKplKclEnabled() {
+		return this.kplKclEnabled;
+	}
+
+	public void setKplKclEnabled(boolean kplKclEnabled) {
+		this.kplKclEnabled = kplKclEnabled;
 	}
 
 	/**
