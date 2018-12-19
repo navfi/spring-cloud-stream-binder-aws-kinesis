@@ -133,7 +133,7 @@ public class KinesisTestBinder extends
 				KinesisBinderConfigurationProperties kinesisBinderConfigurationProperties,
 				KinesisStreamProvisioner provisioningProvider) {
 
-			super(amazonKinesis, kinesisBinderConfigurationProperties,
+			super(amazonKinesis, null, kinesisBinderConfigurationProperties,
 					provisioningProvider);
 		}
 
