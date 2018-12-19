@@ -57,6 +57,7 @@ public class KinesisBinderConfigurationProperties {
 	}
 
 	public void setRegion(String region) {
+
 		this.region = region;
 	}
 
