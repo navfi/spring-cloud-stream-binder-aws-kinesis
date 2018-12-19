@@ -106,6 +106,15 @@ The minimum number of shards that the binder will configure on the stream from w
 It can be superseded by the `partitionCount` setting of the producer or by the value of `instanceCount * concurrency` settings of the producer (if either is larger)
 +
 Default: `1`
+kplKclEnabled::
+    Enable the usage of https://docs.aws.amazon.com/streams/latest/dev/developing-consumers-with-kcl-v2.html[KCL] / https://docs.aws.amazon.com/streams/latest/dev/developing-producers-with-kpl.html[KPL] for all message consumption and production
++
+Default: `false`
+region::
+    Effective only if `kplKclEnabled` is set to `true`.
+Which region to send records to. If you do not specify the region and are running in EC2, the library will use the region the instance is in.
++
+Default: `US_EAST_1` for consumers. For producer, if are running in EC2, the library will use the region the instance is in.
 
 === MetadataStore
 Support for consumer groups is implemented using https://github.com/spring-projects/spring-integration-aws#metadata-store-for-amazon-dynamodb[DynamoDbMetadataStore].

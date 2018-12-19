@@ -23,15 +23,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.services.kinesis.AmazonKinesisAsync;
-import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
-import com.amazonaws.services.kinesis.model.Shard;
-import com.amazonaws.services.kinesis.model.ShardIteratorType;
-import com.amazonaws.services.kinesis.producer.KinesisProducer;
-import com.amazonaws.services.kinesis.producer.KinesisProducerConfiguration;
-
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.stream.binder.AbstractMessageChannelBinder;
 import org.springframework.cloud.stream.binder.BinderHeaders;
 import org.springframework.cloud.stream.binder.BinderSpecificPropertiesProvider;
@@ -71,6 +62,14 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.services.kinesis.AmazonKinesisAsync;
+import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
+import com.amazonaws.services.kinesis.model.Shard;
+import com.amazonaws.services.kinesis.model.ShardIteratorType;
+import com.amazonaws.services.kinesis.producer.KinesisProducer;
+import com.amazonaws.services.kinesis.producer.KinesisProducerConfiguration;
+
 /**
  *
  * The Spring Cloud Stream Binder implementation for AWS Kinesis.
@@ -86,9 +85,6 @@ public class KinesisMessageChannelBinder extends
 		ExtendedPropertiesBinder<MessageChannel, KinesisConsumerProperties, KinesisProducerProperties> {
 
 	private static final ErrorMessageStrategy ERROR_MESSAGE_STRATEGY = new KinesisMessageHeaderErrorMessageStrategy();
-
-	@Value("${cloud.aws.region.static}")
-	private String defaultRegion;
 
 	private final KinesisBinderConfigurationProperties configurationProperties;
 
@@ -193,12 +189,7 @@ public class KinesisMessageChannelBinder extends
 			FunctionExpression<Message<?>> partitionKeyExpression) {
 		final KplMessageHandler messageHandler;
 		KinesisProducerConfiguration configuration = new KinesisProducerConfiguration();
-		if (this.configurationProperties.getRegion() != null) {
-			configuration.setRegion(this.configurationProperties.getRegion());
-		}
-		else {
-			configuration.setRegion(this.defaultRegion);
-		}
+		configuration.setRegion(this.configurationProperties.getRegion());
 		messageHandler = new KplMessageHandler(new KinesisProducer(configuration));
 		messageHandler.setStream(destination.getName());
 		messageHandler.setPartitionKeyExpression(partitionKeyExpression);
@@ -353,12 +344,7 @@ public class KinesisMessageChannelBinder extends
 		String consumerGroup = anonymous ? "anonymous." + UUID.randomUUID().toString() : group;
 		adapter.setConsumerGroup(consumerGroup);
 
-		if (this.configurationProperties.getRegion() != null) {
-			adapter.setRegion(this.configurationProperties.getRegion());
-		}
-		else {
-			adapter.setRegion(this.defaultRegion);
-		}
+		adapter.setRegion(this.configurationProperties.getRegion());
 
 		if (StringUtils.hasText(shardIteratorType)) {
 			adapter.setStreamInitialSequence(InitialPositionInStream.valueOf(shardIteratorType));
