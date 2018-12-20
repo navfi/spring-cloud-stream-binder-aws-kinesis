@@ -23,6 +23,13 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import com.amazonaws.services.kinesis.AmazonKinesisAsync;
+import com.amazonaws.services.kinesis.model.Shard;
+import com.amazonaws.services.kinesis.model.ShardIteratorType;
+import com.amazonaws.services.kinesis.producer.KinesisProducer;
+import com.amazonaws.services.kinesis.producer.KinesisProducerConfiguration;
+import software.amazon.kinesis.common.InitialPositionInStream;
+
 import org.springframework.cloud.stream.binder.AbstractMessageChannelBinder;
 import org.springframework.cloud.stream.binder.BinderHeaders;
 import org.springframework.cloud.stream.binder.BinderSpecificPropertiesProvider;
@@ -62,14 +69,6 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.services.kinesis.AmazonKinesisAsync;
-import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
-import com.amazonaws.services.kinesis.model.Shard;
-import com.amazonaws.services.kinesis.model.ShardIteratorType;
-import com.amazonaws.services.kinesis.producer.KinesisProducer;
-import com.amazonaws.services.kinesis.producer.KinesisProducerConfiguration;
-
 /**
  *
  * The Spring Cloud Stream Binder implementation for AWS Kinesis.
@@ -90,8 +89,6 @@ public class KinesisMessageChannelBinder extends
 
 	private KinesisExtendedBindingProperties extendedBindingProperties = new KinesisExtendedBindingProperties();
 
-	private final AWSCredentialsProvider awsCredentialsProvider;
-
 	private final AmazonKinesisAsync amazonKinesis;
 
 	private ConcurrentMetadataStore checkpointStore;
@@ -102,16 +99,13 @@ public class KinesisMessageChannelBinder extends
 
 
 	public KinesisMessageChannelBinder(AmazonKinesisAsync amazonKinesis,
-			AWSCredentialsProvider awsCredentialsProvider,
 			KinesisBinderConfigurationProperties configurationProperties,
 			KinesisStreamProvisioner provisioningProvider) {
 
 		super(headersToMap(configurationProperties), provisioningProvider);
-		Assert.notNull(awsCredentialsProvider, "'awsCredentialsProvider' must not be null");
 		Assert.notNull(amazonKinesis, "'amazonKinesis' must not be null");
 		this.configurationProperties = configurationProperties;
 		this.amazonKinesis = amazonKinesis;
-		this.awsCredentialsProvider = awsCredentialsProvider;
 	}
 
 	public void setExtendedBindingProperties(
@@ -337,8 +331,7 @@ public class KinesisMessageChannelBinder extends
 
 		String shardIteratorType = kinesisConsumerProperties.getShardIteratorType();
 
-		KclMessageDrivenChannelAdapter adapter = new KclMessageDrivenChannelAdapter(this.awsCredentialsProvider,
-				destination.getName());
+		KclMessageDrivenChannelAdapter adapter = new KclMessageDrivenChannelAdapter(destination.getName());
 
 		boolean anonymous = !StringUtils.hasText(group);
 		String consumerGroup = anonymous ? "anonymous." + UUID.randomUUID().toString() : group;

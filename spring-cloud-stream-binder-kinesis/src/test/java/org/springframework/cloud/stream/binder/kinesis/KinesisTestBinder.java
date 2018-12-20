@@ -18,7 +18,6 @@ package org.springframework.cloud.stream.binder.kinesis;
 
 import java.util.List;
 
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.kinesis.AmazonKinesisAsync;
 import com.amazonaws.services.kinesis.model.ListStreamsRequest;
 import com.amazonaws.services.kinesis.model.ListStreamsResult;
@@ -134,7 +133,7 @@ public class KinesisTestBinder extends
 				KinesisBinderConfigurationProperties kinesisBinderConfigurationProperties,
 				KinesisStreamProvisioner provisioningProvider) {
 
-			super(amazonKinesis, new DefaultAWSCredentialsProviderChain(), kinesisBinderConfigurationProperties,
+			super(amazonKinesis, kinesisBinderConfigurationProperties,
 					provisioningProvider);
 		}
 
