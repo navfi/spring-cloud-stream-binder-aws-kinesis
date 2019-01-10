@@ -345,6 +345,9 @@ public class KinesisMessageChannelBinder extends
 
 		adapter.setIdleBetweenPolls(kinesisConsumerProperties.getIdleBetweenPolls());
 		adapter.setConsumerBackoff(kinesisConsumerProperties.getConsumerBackoff());
+		if (this.configurationProperties.getCheckpoint().getIntervalForKcl() != null) {
+			adapter.setCheckpointsInterval(this.configurationProperties.getCheckpoint().getIntervalForKcl());
+		}
 
 		ErrorInfrastructure errorInfrastructure = registerErrorInfrastructure(destination, consumerGroup, properties);
 		adapter.setErrorMessageStrategy(ERROR_MESSAGE_STRATEGY);
