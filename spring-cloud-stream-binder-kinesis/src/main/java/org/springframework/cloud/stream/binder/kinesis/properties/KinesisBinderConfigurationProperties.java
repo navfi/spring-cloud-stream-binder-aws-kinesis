@@ -131,6 +131,8 @@ public class KinesisBinderConfigurationProperties {
 
 		private Integer timeToLive;
 
+		private Long intervalForKcl = null;
+
 		public String getTable() {
 			return this.table;
 		}
@@ -177,6 +179,14 @@ public class KinesisBinderConfigurationProperties {
 
 		public void setTimeToLive(Integer timeToLive) {
 			this.timeToLive = timeToLive;
+		}
+
+		public Long getIntervalForKcl() {
+			return this.intervalForKcl;
+		}
+
+		public void setIntervalForKcl(Long intervalForKcl) {
+			this.intervalForKcl = intervalForKcl;
 		}
 
 	}
