@@ -22,12 +22,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Executors;
 
 import com.amazonaws.services.kinesis.AmazonKinesisAsync;
 import com.amazonaws.services.kinesis.model.Shard;
 import com.amazonaws.services.kinesis.model.ShardIteratorType;
 import com.amazonaws.services.kinesis.producer.KinesisProducer;
 import com.amazonaws.services.kinesis.producer.KinesisProducerConfiguration;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.kinesis.common.InitialPositionInStream;
 
 import org.springframework.cloud.stream.binder.AbstractMessageChannelBinder;
@@ -331,13 +333,14 @@ public class KinesisMessageChannelBinder extends
 
 		String shardIteratorType = kinesisConsumerProperties.getShardIteratorType();
 
-		KclMessageDrivenChannelAdapter adapter = new KclMessageDrivenChannelAdapter(destination.getName());
+		Region parsedRegion = (this.configurationProperties.getRegion() == null) ?
+				null : Region.of(this.configurationProperties.getRegion());
+		KclMessageDrivenChannelAdapter adapter = new KclMessageDrivenChannelAdapter(
+				destination.getName(), Executors.newSingleThreadExecutor(), parsedRegion);
 
 		boolean anonymous = !StringUtils.hasText(group);
 		String consumerGroup = anonymous ? "anonymous." + UUID.randomUUID().toString() : group;
 		adapter.setConsumerGroup(consumerGroup);
-
-		adapter.setRegion(this.configurationProperties.getRegion());
 
 		if (StringUtils.hasText(shardIteratorType)) {
 			adapter.setStreamInitialSequence(InitialPositionInStream.valueOf(shardIteratorType));
