@@ -27,12 +27,10 @@ import org.springframework.integration.aws.metadata.DynamoDbMetadataStore;
  * @author Artem Bilan
  * @author Jacob Severson
  * @author Sergiu Pantiru
- *
+ * @author Arnaud Lecollaire
  */
 @ConfigurationProperties(prefix = "spring.cloud.stream.kinesis.binder")
 public class KinesisBinderConfigurationProperties {
-
-	private String region = null;
 
 	private String[] headers = new String[] {};
 
@@ -51,15 +49,6 @@ public class KinesisBinderConfigurationProperties {
 	private final Checkpoint checkpoint = new Checkpoint();
 
 	private final Locks locks = new Locks();
-
-	public String getRegion() {
-		return this.region;
-	}
-
-	public void setRegion(String region) {
-
-		this.region = region;
-	}
 
 	public String[] getHeaders() {
 		return this.headers;
@@ -142,7 +131,7 @@ public class KinesisBinderConfigurationProperties {
 
 		private Integer timeToLive;
 
-		private Long intervalForKcl = null;
+		private Long interval = null;
 
 		public String getTable() {
 			return this.table;
@@ -192,12 +181,12 @@ public class KinesisBinderConfigurationProperties {
 			this.timeToLive = timeToLive;
 		}
 
-		public Long getIntervalForKcl() {
-			return this.intervalForKcl;
+		public Long getInterval() {
+			return this.interval;
 		}
 
-		public void setIntervalForKcl(Long intervalForKcl) {
-			this.intervalForKcl = intervalForKcl;
+		public void setInterval(Long interval) {
+			this.interval = interval;
 		}
 
 	}
