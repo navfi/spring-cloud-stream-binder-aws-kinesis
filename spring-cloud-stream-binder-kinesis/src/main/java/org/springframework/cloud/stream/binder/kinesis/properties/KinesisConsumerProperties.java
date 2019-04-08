@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -42,6 +42,12 @@ public class KinesisConsumerProperties {
 	private int consumerBackoff = 1000;
 
 	private String shardIteratorType;
+
+	/**
+	 * Worker identifier used to distinguish different workers/processes
+	 * (only used when KCL is enabled).
+	 */
+	private String workerId;
 
 	public int getStartTimeout() {
 		return this.startTimeout;
@@ -97,6 +103,14 @@ public class KinesisConsumerProperties {
 
 	public void setShardIteratorType(String shardIteratorType) {
 		this.shardIteratorType = shardIteratorType;
+	}
+
+	public String getWorkerId() {
+		return workerId;
+	}
+
+	public void setWorkerId(String workerId) {
+		this.workerId = workerId;
 	}
 
 }

@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -162,8 +162,8 @@ public class KinesisBinderProcessorTests {
 		}
 
 		@Transformer(inputChannel = Processor.INPUT, outputChannel = Processor.OUTPUT)
-		public String transform(Message<?> message) {
-			String payload = new String((byte[]) message.getPayload());
+		public String transform(Message<String> message) {
+			String payload = message.getPayload();
 			if (!"junk".equals(payload)) {
 				return payload.toUpperCase();
 			}

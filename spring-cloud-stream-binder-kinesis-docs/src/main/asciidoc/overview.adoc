@@ -115,11 +115,6 @@ kplKclEnabled::
     Enable the usage of https://docs.aws.amazon.com/streams/latest/dev/developing-consumers-with-kcl-v2.html[KCL] / https://docs.aws.amazon.com/streams/latest/dev/developing-producers-with-kpl.html[KPL] for all message consumption and production
 +
 Default: `false`
-region::
-    Effective only if `kplKclEnabled` is set to `true`.
-Which region to send records to. If you do not specify the region and are running in EC2, the library will use the region the instance is in.
-+
-Default: `US_EAST_1` for consumers. For producer, if are running in EC2, the library will use the region the instance is in.
 
 === MetadataStore
 Support for consumer groups is implemented using https://github.com/spring-projects/spring-integration-aws#metadata-store-for-amazon-dynamodb[DynamoDbMetadataStore].
@@ -142,12 +137,12 @@ createRetries::
 Default: `25`
 readCapacity::
 	The Read capacity of the DynamoDb table.
-See http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ProvisionedThroughput.html[Kinesis Provisioned Throughput]
+See https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ProvisionedThroughput.html[Kinesis Provisioned Throughput]
 +
 Default: `1`
 writeCapacity::
 	The write capacity of the DynamoDb table.
-See http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ProvisionedThroughput.html[Kinesis Provisioned Throughput]
+See https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ProvisionedThroughput.html[Kinesis Provisioned Throughput]
 +
 Default: `1`
 timeToLive::
@@ -168,12 +163,12 @@ table::
 Default: `SpringIntegrationLockRegistry`
 readCapacity::
 	The Read capacity of the DynamoDb table.
-See http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ProvisionedThroughput.html[Kinesis Provisioned Throughput]
+See https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ProvisionedThroughput.html[Kinesis Provisioned Throughput]
 +
 Default: `1`
 writeCapacity::
 	The write capacity of the DynamoDb table.
-See http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ProvisionedThroughput.html[Kinesis Provisioned Throughput]
+See https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ProvisionedThroughput.html[Kinesis Provisioned Throughput]
 Default: `1`
 leaseDuration::
 	The length of time that the lease for the lock will be granted for.
@@ -223,6 +218,10 @@ checkpointMode::
   If `manual`, checkpoints occur on demand via the `Checkpointer` callback.
 +
 Default: `batch`
+workerId::
+  The worker identifier used to distinguish different workers/processes (only used when KCL is enabled).
++
+No default - if not set, default value inside spring-integration-aws will be used (random UUID).
 recordsLimit::
   The maximum number of records to poll per `GetRecords` request.
   Must not be greater than `10000`.

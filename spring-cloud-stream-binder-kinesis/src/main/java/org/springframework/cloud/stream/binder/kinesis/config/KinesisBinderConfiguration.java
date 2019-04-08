@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,7 +28,6 @@ import com.amazonaws.services.kinesis.AmazonKinesisAsyncClientBuilder;
 import com.amazonaws.services.kinesis.producer.KinesisProducerConfiguration;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -43,8 +42,6 @@ import org.springframework.cloud.stream.binder.kinesis.provisioning.KinesisStrea
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.integration.aws.lock.DynamoDbLockRegistry;
 import org.springframework.integration.aws.metadata.DynamoDbMetadataStore;
 import org.springframework.integration.metadata.ConcurrentMetadataStore;
@@ -86,31 +83,28 @@ public class KinesisBinderConfiguration {
 	@Bean
 	public KinesisMessageChannelBinder kinesisMessageChannelBinder(
 			AmazonKinesisAsync amazonKinesis,
-			@Autowired(required = false) AmazonCloudWatch cloudWatchClient,
 			AmazonDynamoDB dynamoDBClient,
 			KinesisStreamProvisioner provisioningProvider,
 			ConcurrentMetadataStore kinesisCheckpointStore, LockRegistry lockRegistry,
 			KinesisExtendedBindingProperties kinesisExtendedBindingProperties,
-			@Autowired(required = false) KinesisProducerConfiguration kinesisProducerConfiguration,
 			AWSCredentialsProvider awsCredentialsProvider,
-			@Autowired(required = false) @Qualifier("kclTaskExecutor") TaskExecutor kclTaskExecutor) {
+			@Autowired(required = false) AmazonCloudWatch cloudWatchClient,
+			@Autowired(required = false) KinesisProducerConfiguration kinesisProducerConfiguration) {
 
-		KinesisMessageChannelBinder kinesisMessageChannelBinder = new KinesisMessageChannelBinder(
-				amazonKinesis, cloudWatchClient, dynamoDBClient,
+		KinesisMessageChannelBinder kinesisMessageChannelBinder =
+				new KinesisMessageChannelBinder(amazonKinesis, cloudWatchClient, dynamoDBClient,
 				this.configurationProperties, provisioningProvider, awsCredentialsProvider);
 		kinesisMessageChannelBinder.setCheckpointStore(kinesisCheckpointStore);
 		kinesisMessageChannelBinder.setLockRegistry(lockRegistry);
-		kinesisMessageChannelBinder
-				.setExtendedBindingProperties(kinesisExtendedBindingProperties);
+		kinesisMessageChannelBinder.setExtendedBindingProperties(kinesisExtendedBindingProperties);
 		kinesisMessageChannelBinder.setKinesisProducerConfiguration(kinesisProducerConfiguration);
-		kinesisMessageChannelBinder.setKclTaskExecutor(kclTaskExecutor);
 
 		return kinesisMessageChannelBinder;
 	}
 
 	@Bean
 	@ConditionalOnMissingBean
-	@ConditionalOnProperty(name = "spring.cloud.stream.kinesis.binder.kpl-kcl-enabled", havingValue = "true")
+	@ConditionalOnProperty(name = "spring.cloud.stream.kinesis.binder.kpl-kcl-enabled")
 	public AmazonCloudWatchAsync cloudWatch(AWSCredentialsProvider awsCredentialsProvider,
 			RegionProvider regionProvider) {
 
@@ -170,18 +164,10 @@ public class KinesisBinderConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	@ConditionalOnProperty(name = "spring.cloud.stream.kinesis.binder.kpl-kcl-enabled", havingValue = "true")
+	@ConditionalOnProperty(name = "spring.cloud.stream.kinesis.binder.kpl-kcl-enabled")
 	public KinesisProducerConfiguration kinesisProducerConfiguration(RegionProvider regionProvider) {
 		KinesisProducerConfiguration kinesisProducerConfiguration = new KinesisProducerConfiguration();
 		kinesisProducerConfiguration.setRegion(regionProvider.getRegion().getName());
 		return kinesisProducerConfiguration;
 	}
-
-	@Bean(name = "kclTaskExecutor")
-	@ConditionalOnMissingBean(name = "kclTaskExecutor")
-	@ConditionalOnProperty(name = "spring.cloud.stream.kinesis.binder.kpl-kcl-enabled", havingValue = "true")
-	public TaskExecutor kclTaskExecutor() {
-		return new SimpleAsyncTaskExecutor();
-	}
-
 }

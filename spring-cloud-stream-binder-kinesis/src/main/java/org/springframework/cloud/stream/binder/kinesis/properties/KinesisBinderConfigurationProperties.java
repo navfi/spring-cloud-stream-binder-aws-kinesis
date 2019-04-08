@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,7 +32,7 @@ import org.springframework.integration.aws.metadata.DynamoDbMetadataStore;
 @ConfigurationProperties(prefix = "spring.cloud.stream.kinesis.binder")
 public class KinesisBinderConfigurationProperties {
 
-	private String[] headers = new String[] {};
+	private String[] headers = new String[] { };
 
 	private int describeStreamBackoff = 1000;
 
@@ -44,6 +44,9 @@ public class KinesisBinderConfigurationProperties {
 
 	private int minShardCount = 1;
 
+	/**
+	 * Enables the usage of Amazon KCL/KPL libraries for all message consumption and production.
+	 */
 	private boolean kplKclEnabled;
 
 	private final Checkpoint checkpoint = new Checkpoint();
@@ -131,7 +134,10 @@ public class KinesisBinderConfigurationProperties {
 
 		private Integer timeToLive;
 
-		private Long interval = null;
+		/**
+		 * Interval between two checkpoints when checkpoint mode is periodic.
+		 */
+		private Long interval;
 
 		public String getTable() {
 			return this.table;

@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,8 @@ package org.springframework.cloud.stream.binder.kinesis;
 
 import java.util.List;
 
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync;
 import com.amazonaws.services.kinesis.AmazonKinesisAsync;
 import com.amazonaws.services.kinesis.model.ListStreamsRequest;
@@ -44,7 +46,7 @@ import org.springframework.integration.core.MessageProducer;
  * An {@link AbstractTestBinder} implementation for the {@link KinesisMessageChannelBinder}.
  *
  * @author Artem Bilan
- *
+ * @author Arnaud Lecollaire
  */
 public class KinesisTestBinder extends
 		AbstractTestBinder<KinesisMessageChannelBinder, ExtendedConsumerProperties<KinesisConsumerProperties>,
@@ -136,7 +138,7 @@ public class KinesisTestBinder extends
 				KinesisStreamProvisioner provisioningProvider) {
 
 			super(amazonKinesis, null, dynamoDbClient, kinesisBinderConfigurationProperties,
-					provisioningProvider, null);
+					provisioningProvider, new AWSStaticCredentialsProvider(new BasicAWSCredentials("", "")));
 		}
 
 		/*

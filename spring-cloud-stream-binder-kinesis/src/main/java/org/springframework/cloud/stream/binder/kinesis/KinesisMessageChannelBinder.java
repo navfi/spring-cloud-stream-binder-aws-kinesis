@@ -1,11 +1,11 @@
 /*
- * Copyright 2017-2018 the original author or authors.
+ * Copyright 2017-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -47,7 +47,6 @@ import org.springframework.cloud.stream.binder.kinesis.provisioning.KinesisConsu
 import org.springframework.cloud.stream.binder.kinesis.provisioning.KinesisStreamProvisioner;
 import org.springframework.cloud.stream.provisioning.ConsumerDestination;
 import org.springframework.cloud.stream.provisioning.ProducerDestination;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.integration.aws.inbound.kinesis.KclMessageDrivenChannelAdapter;
 import org.springframework.integration.aws.inbound.kinesis.KinesisMessageDrivenChannelAdapter;
@@ -109,8 +108,6 @@ public class KinesisMessageChannelBinder extends
 
 	private final AWSCredentialsProvider awsCredentialsProvider;
 
-	private TaskExecutor kclTaskExecutor;
-
 	public KinesisMessageChannelBinder(AmazonKinesisAsync amazonKinesis,
 			AmazonCloudWatch cloudWatchClient,
 			AmazonDynamoDB dynamoDBClient,
@@ -146,10 +143,6 @@ public class KinesisMessageChannelBinder extends
 		this.kinesisProducerConfiguration = kinesisProducerConfiguration;
 	}
 
-	public void setKclTaskExecutor(TaskExecutor kclTaskExecutor) {
-		this.kclTaskExecutor = kclTaskExecutor;
-	}
-
 	@Override
 	public KinesisConsumerProperties getExtendedConsumerProperties(String channelName) {
 		return this.extendedBindingProperties.getExtendedConsumerProperties(channelName);
@@ -181,10 +174,11 @@ public class KinesisMessageChannelBinder extends
 			ExtendedProducerProperties<KinesisProducerProperties> producerProperties,
 			MessageChannel errorChannel) {
 
-		FunctionExpression<Message<?>> partitionKeyExpression = new FunctionExpression<Message<?>>((m) ->
-			m.getHeaders().containsKey(BinderHeaders.PARTITION_HEADER)
-				? m.getHeaders().get(BinderHeaders.PARTITION_HEADER)
-				: m.getPayload().hashCode());
+		FunctionExpression<Message<?>> partitionKeyExpression =
+				new FunctionExpression<>((m) ->
+						m.getHeaders().containsKey(BinderHeaders.PARTITION_HEADER)
+								? m.getHeaders().get(BinderHeaders.PARTITION_HEADER)
+								: m.getPayload().hashCode());
 		final AbstractAwsMessageHandler<?> messageHandler;
 		if (this.configurationProperties.isKplKclEnabled()) {
 			messageHandler = createKplMessageHandler(destination, partitionKeyExpression);
@@ -222,20 +216,22 @@ public class KinesisMessageChannelBinder extends
 			ExtendedProducerProperties<KinesisProducerProperties> producerProperties) {
 
 		if (outputChannel instanceof ChannelInterceptorAware && producerProperties.isPartitioned()) {
-			((ChannelInterceptorAware) outputChannel).addInterceptor(0,
-					new ChannelInterceptor() {
+			((ChannelInterceptorAware) outputChannel)
+					.addInterceptor(0,
+							new ChannelInterceptor() {
 
-						@Override
-						public Message<?> preSend(Message<?> message, MessageChannel channel) {
-							Object partitionKey =
-									producerProperties.getPartitionKeyExpression()
-									.getValue(KinesisMessageChannelBinder.this.evaluationContext, message);
-							return MessageBuilder.fromMessage(message)
-									.setHeader(BinderHeaders.PARTITION_OVERRIDE, partitionKey)
-									.build();
-						}
+								@Override
+								public Message<?> preSend(Message<?> message, MessageChannel channel) {
+									Object partitionKey =
+											producerProperties.getPartitionKeyExpression()
+													.getValue(KinesisMessageChannelBinder.this.evaluationContext,
+															message);
+									return MessageBuilder.fromMessage(message)
+											.setHeader(BinderHeaders.PARTITION_OVERRIDE, partitionKey)
+											.build();
+								}
 
-					});
+							});
 		}
 	}
 
@@ -285,8 +281,7 @@ public class KinesisMessageChannelBinder extends
 			List<Shard> shards = kinesisConsumerDestination.getShards();
 			for (int i = 0; i < shards.size(); i++) {
 				// divide shards across instances
-				if ((i % properties.getInstanceCount()) == properties
-						.getInstanceIndex()) {
+				if ((i % properties.getInstanceCount()) == properties.getInstanceIndex()) {
 					KinesisShardOffset shardOffset = new KinesisShardOffset(
 							kinesisShardOffset);
 					shardOffset.setStream(destination.getName());
@@ -330,6 +325,9 @@ public class KinesisMessageChannelBinder extends
 		adapter.setRecordsLimit(kinesisConsumerProperties.getRecordsLimit());
 		adapter.setIdleBetweenPolls(kinesisConsumerProperties.getIdleBetweenPolls());
 		adapter.setConsumerBackoff(kinesisConsumerProperties.getConsumerBackoff());
+		if (this.configurationProperties.getCheckpoint().getInterval() != null) {
+			adapter.setCheckpointsInterval(this.configurationProperties.getCheckpoint().getInterval());
+		}
 
 		if (this.checkpointStore != null) {
 			adapter.setCheckpointStore(this.checkpointStore);
@@ -358,9 +356,9 @@ public class KinesisMessageChannelBinder extends
 
 		String shardIteratorType = kinesisConsumerProperties.getShardIteratorType();
 
-		KclMessageDrivenChannelAdapter adapter = new KclMessageDrivenChannelAdapter(
-			destination.getName(), this.amazonKinesis, this.cloudWatchClient, this.dynamoDBClient, awsCredentialsProvider);
-		adapter.setExecutor(kclTaskExecutor);
+		KclMessageDrivenChannelAdapter adapter =
+				new KclMessageDrivenChannelAdapter(destination.getName(), this.amazonKinesis, this.cloudWatchClient,
+						this.dynamoDBClient, this.awsCredentialsProvider);
 
 		boolean anonymous = !StringUtils.hasText(group);
 		String consumerGroup = anonymous ? "anonymous." + UUID.randomUUID().toString() : group;
@@ -379,6 +377,9 @@ public class KinesisMessageChannelBinder extends
 		ErrorInfrastructure errorInfrastructure = registerErrorInfrastructure(destination, consumerGroup, properties);
 		adapter.setErrorMessageStrategy(ERROR_MESSAGE_STRATEGY);
 		adapter.setErrorChannel(errorInfrastructure.getErrorChannel());
+		if (kinesisConsumerProperties.getWorkerId() != null) {
+			adapter.setWorkerId(kinesisConsumerProperties.getWorkerId());
+		}
 
 		return adapter;
 	}
